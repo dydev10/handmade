@@ -58,7 +58,8 @@ LRESULT CALLBACK MainWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int cmdShow) {  
   WNDCLASS windowClass = {};
-  windowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
+  
+  // windowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
   windowClass.lpfnWndProc = MainWindowProc;
   windowClass.hInstance = instance;
   //windowClass.hIcon = ;
