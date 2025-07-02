@@ -1,5 +1,12 @@
 #include <windows.h>
 
+#define internal static
+#define local_persist static
+#define global_variable static
+
+// TODO: move running to a better place instead of static global
+global_variable bool running;
+
 LRESULT CALLBACK MainWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
   LRESULT result = 0;
   
@@ -10,13 +17,13 @@ LRESULT CALLBACK MainWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM
     } break;
   
     case WM_DESTROY: {
-      OutputDebugStringA("WM_DESTROY\n");
+      // TODO: treat destroy event as error and recovering by recreating window
+      running = false;
     } break;
   
     case WM_CLOSE: {
-      OutputDebugStringA("WM_CLOSE\n");
-      DestroyWindow(window);
-      // TODO: handle proper closing
+      // TODO: ask user to confirm before closing window
+      running = false;
     } break;
   
     case WM_ACTIVATE: {
@@ -33,7 +40,7 @@ LRESULT CALLBACK MainWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM
       int width = paint.rcPaint.right - x;
       int height = paint.rcPaint.bottom - y;
       
-      static DWORD operation = WHITENESS;
+      local_persist DWORD operation = WHITENESS;
       if (operation == WHITENESS) {
         operation = BLACKNESS;
       } else {
@@ -52,7 +59,6 @@ LRESULT CALLBACK MainWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM
 
   return result;
 }
-
 
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int cmdShow) {  
@@ -81,8 +87,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
     );
 
     if (windowHandle != NULL) {
-      MSG message;
-      for (;;) {
+      running = true;
+      while (running) {
+        MSG message;
         BOOL messageResult = GetMessageA(&message, 0, 0, 0);
 
         if (messageResult > 0) {
