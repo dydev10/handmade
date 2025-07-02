@@ -1,4 +1,3 @@
-#undef UNICODE
 #include <windows.h>
 
 LRESULT CALLBACK MainWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
@@ -57,7 +56,7 @@ LRESULT CALLBACK MainWindowProc(HWND window, UINT message, WPARAM wParam, LPARAM
 
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int cmdShow) {  
-  WNDCLASS windowClass = {};
+  WNDCLASSA windowClass = {};
   
   // windowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
   windowClass.lpfnWndProc = MainWindowProc;
@@ -65,7 +64,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
   //windowClass.hIcon = ;
   windowClass.lpszClassName = "HandmadeEngineWindowClass";
 
-  if (RegisterClass(&windowClass)) {
+  if (RegisterClassA(&windowClass)) {
     HWND windowHandle = CreateWindowExA(
       0,
       windowClass.lpszClassName,
@@ -84,11 +83,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
     if (windowHandle != NULL) {
       MSG message;
       for (;;) {
-        BOOL messageResult = GetMessage(&message, 0, 0, 0);
+        BOOL messageResult = GetMessageA(&message, 0, 0, 0);
 
         if (messageResult > 0) {
           TranslateMessage(&message);
-          DispatchMessage(&message);
+          DispatchMessageA(&message);
         } else {
           break;
         }
