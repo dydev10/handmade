@@ -75,10 +75,9 @@ internal void Win32ResizeDIBSection(int width, int height) {
   bitmapInfo.bmiHeader.biCompression = BI_RGB;
 
   int bitmapMemorySize = (bitmapWidth * bitmapHeight) * bytesPerPixel;
-  bitmapMemory = VirtualAlloc(0, bitmapMemorySize, MEM_COMMIT, PAGE_READWRITE); 
+  bitmapMemory = VirtualAlloc(0, bitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
 
-  // Fill memory with pixels
-  renderCheckeredGradient(0, 0);
+  // TODO: clear all pixels in memory to black???
 }
 
 internal void Win32UpdateWindow(HDC deviceContext, RECT *windowRect, int x, int y, int width, int height) {
@@ -176,18 +175,32 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
 
     if (windowHandle != NULL) {
       running = true;
+      int xOffset = 0;
+      int yOffset = 0;
+        
       while (running) {
         MSG message;
-        BOOL messageResult = GetMessageA(&message, 0, 0, 0);
-
-        if (messageResult > 0) {
+        while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE)) {
+          if (message.message == WM_QUIT) {
+            running = false;
+          }
           TranslateMessage(&message);
           DispatchMessageA(&message);
-        } else {
-          break;
         }
+
+        renderCheckeredGradient(xOffset, yOffset);
+
+        RECT clientRect;
+        GetClientRect(windowHandle, &clientRect);
+        int windowWidth = clientRect.right - clientRect.left;
+        int windowHeight = clientRect.bottom - clientRect.top;
+
+        HDC deviceContext = GetDC(windowHandle);
+        Win32UpdateWindow(deviceContext, &clientRect, 0, 0, windowWidth, windowHeight);
+        ReleaseDC(windowHandle, deviceContext);
+
+        ++xOffset;
       }
-      
     } else {
       // TODO: error logging
     }
