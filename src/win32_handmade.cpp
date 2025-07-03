@@ -27,26 +27,21 @@ internal void renderCheckeredGradient(int xOffset, int yOffset) {
   int pitch = bitmapWidth * bytesPerPixel;
   uint8 *row = (uint8 *)bitmapMemory;
   for (int y = 0; y < bitmapHeight; ++y) {
-    // uint32 *pixel = (uint32 *)row;  
-    uint8 *pixel = (uint8 *)row;  
+    uint32 *pixel = (uint32 *)row;  
     for (int x = 0; x < bitmapWidth; ++x) {
       /*
         offset          : +0 +1 +2 +3
         Pixel in memory : 00 00 00 00
         Channel         : BB GG RR xx (reversed little endian because windows reverses it to look like 0x xxRRGGBB)
+
+        in 32bit Register     : xx RR GG BB
       */
+      uint8 b = (uint8)(x + xOffset);
+      uint8 g = (uint8)(y + yOffset);
+      uint8 r = 0;
 
-      *pixel = (uint8)(x + xOffset);
-      ++pixel;
-
-      *pixel = (uint8)(y + yOffset);
-      ++pixel;
-      
-      *pixel = 0;
-      ++pixel;
-     
-      *pixel = 0;
-      ++pixel;
+      // 0x xxRRGGBB
+      *pixel++ = ((g << 8) | b);
     }
 
     row += pitch;
