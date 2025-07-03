@@ -1,54 +1,95 @@
 #include <windows.h>
+#include <stdint.h>
 
 #define internal static
 #define local_persist static
 #define global_variable static
 
+typedef uint8_t uint8;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint64_t uint64;
+
+typedef int8_t int8;
+typedef int16_t int16;
+typedef int32_t int32;
+typedef int64_t int64;
+
 // TODO: move running to a better place instead of static global
 global_variable bool running;
 global_variable BITMAPINFO bitmapInfo;
 global_variable void *bitmapMemory;  
-global_variable HBITMAP bitmapHandle;
-global_variable HDC bitmapDeviceContext;
+global_variable int bitmapWidth;
+global_variable int bitmapHeight;
+global_variable int bytesPerPixel = 4;
+
+internal void renderCheckeredGradient(int xOffset, int yOffset) {
+  int pitch = bitmapWidth * bytesPerPixel;
+  uint8 *row = (uint8 *)bitmapMemory;
+  for (int y = 0; y < bitmapHeight; ++y) {
+    // uint32 *pixel = (uint32 *)row;  
+    uint8 *pixel = (uint8 *)row;  
+    for (int x = 0; x < bitmapWidth; ++x) {
+      /*
+        offset          : +0 +1 +2 +3
+        Pixel in memory : 00 00 00 00
+        Channel         : BB GG RR xx (reversed little endian because windows reverses it to look like 0x xxRRGGBB)
+      */
+
+      *pixel = (uint8)(x + xOffset);
+      ++pixel;
+
+      *pixel = (uint8)(y + yOffset);
+      ++pixel;
+      
+      *pixel = 0;
+      ++pixel;
+     
+      *pixel = 0;
+      ++pixel;
+    }
+
+    row += pitch;
+  }
+}
+
 
 /**
  * All function win Win32 prefix are custom functions to deal Windows API layer
  */
 
 internal void Win32ResizeDIBSection(int width, int height) {
-  // TODO: try creating new one before deleting current DIB Section, maybe
-  
-  if (bitmapHandle) {
-    DeleteObject(bitmapHandle);
+  // TODO: try allocation before free
+  if(bitmapMemory) {
+    VirtualFree(bitmapMemory, 0, MEM_RELEASE);
   }
 
-  if (!bitmapDeviceContext) {
-    // TODO: should be re-created for few cases like switching monitors, resolution change, etc
-    bitmapDeviceContext = CreateCompatibleDC(0);
-  }
-  
+  bitmapWidth = width;
+  bitmapHeight = height;
+
   bitmapInfo.bmiHeader.biSize = sizeof(bitmapInfo.bmiHeader);
-  bitmapInfo.bmiHeader.biWidth = width;
-  bitmapInfo.bmiHeader.biHeight = height;
+  bitmapInfo.bmiHeader.biWidth = bitmapWidth;
+  bitmapInfo.bmiHeader.biHeight = -bitmapHeight;  // negative height ensure the framebuffer uses top left corner as origin when drawing on windows
   bitmapInfo.bmiHeader.biPlanes = 1;
   bitmapInfo.bmiHeader.biBitCount = 32;
   bitmapInfo.bmiHeader.biCompression = BI_RGB;
-  
-  bitmapHandle = CreateDIBSection(
-    bitmapDeviceContext,
-    &bitmapInfo,
-    DIB_RGB_COLORS,
-    &bitmapMemory,
-    0,
-    0
-  );
+
+  int bitmapMemorySize = (bitmapWidth * bitmapHeight) * bytesPerPixel;
+  bitmapMemory = VirtualAlloc(0, bitmapMemorySize, MEM_COMMIT, PAGE_READWRITE); 
+
+  // Fill memory with pixels
+  renderCheckeredGradient(0, 0);
 }
 
-internal void Win32UpdateWindow(HDC deviceContext, int x, int y, int width, int height) {
+internal void Win32UpdateWindow(HDC deviceContext, RECT *windowRect, int x, int y, int width, int height) {
+  int windowWidth = windowRect->right - windowRect->left;
+  int windowHeight = windowRect->bottom - windowRect->top;
   StretchDIBits(
     deviceContext,
-    x, y, width, height,
-    x, y, width, height, 
+    // x, y, width, height,
+    // x, y, width, height, 
+    0, 0, bitmapWidth, bitmapHeight,
+    0, 0, windowWidth, windowHeight,
     bitmapMemory,
     &bitmapInfo,
     DIB_RGB_COLORS,
@@ -90,7 +131,11 @@ LRESULT CALLBACK Win32MainWindowProcedure(HWND window, UINT message, WPARAM wPar
       int y = paint.rcPaint.top;
       int width = paint.rcPaint.right - x;
       int height = paint.rcPaint.bottom - y;
-      Win32UpdateWindow(deviceContext, x, y, width, height);
+
+      RECT clientRect;
+      GetClientRect(window, &clientRect);
+
+      Win32UpdateWindow(deviceContext, &clientRect, x, y, width, height);
       EndPaint(window, &paint);
     } break;
   
