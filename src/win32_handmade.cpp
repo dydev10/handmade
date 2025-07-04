@@ -75,9 +75,9 @@ internal void Win32ResizeDIBSection(int width, int height) {
   // TODO: clear all pixels in memory to black???
 }
 
-internal void Win32UpdateWindow(HDC deviceContext, RECT *windowRect, int x, int y, int width, int height) {
-  int windowWidth = windowRect->right - windowRect->left;
-  int windowHeight = windowRect->bottom - windowRect->top;
+internal void Win32UpdateWindow(HDC deviceContext, RECT clientRect, int x, int y, int width, int height) {
+  int windowWidth = clientRect.right - clientRect.left;
+  int windowHeight = clientRect.bottom - clientRect.top;
   StretchDIBits(
     deviceContext,
     // x, y, width, height,
@@ -129,7 +129,7 @@ LRESULT CALLBACK Win32MainWindowProcedure(HWND window, UINT message, WPARAM wPar
       RECT clientRect;
       GetClientRect(window, &clientRect);
 
-      Win32UpdateWindow(deviceContext, &clientRect, x, y, width, height);
+      Win32UpdateWindow(deviceContext, clientRect, x, y, width, height);
       EndPaint(window, &paint);
     } break;
   
@@ -191,7 +191,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         int windowHeight = clientRect.bottom - clientRect.top;
 
         HDC deviceContext = GetDC(windowHandle);
-        Win32UpdateWindow(deviceContext, &clientRect, 0, 0, windowWidth, windowHeight);
+        Win32UpdateWindow(deviceContext, clientRect, 0, 0, windowWidth, windowHeight);
         ReleaseDC(windowHandle, deviceContext);
 
         ++xOffset;
