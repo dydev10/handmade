@@ -23,7 +23,7 @@ global_variable int bitmapWidth;
 global_variable int bitmapHeight;
 global_variable int bytesPerPixel = 4;
 
-internal void renderCheckeredGradient(int xOffset, int yOffset) {
+internal void RenderCheckeredGradient(int xOffset, int yOffset) {
   int pitch = bitmapWidth * bytesPerPixel;
   uint8 *row = (uint8 *)bitmapMemory;
   for (int y = 0; y < bitmapHeight; ++y) {
@@ -146,7 +146,7 @@ LRESULT CALLBACK Win32MainWindowProcedure(HWND window, UINT message, WPARAM wPar
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int cmdShow) {  
   WNDCLASSA windowClass = {};
   
-  // windowClass.style = CS_OWNDC | CS_HREDRAW | CS_VREDRAW;
+  windowClass.style = CS_HREDRAW | CS_VREDRAW;
   windowClass.lpfnWndProc = Win32MainWindowProcedure;
   windowClass.hInstance = instance;
   //windowClass.hIcon = ;
@@ -183,7 +183,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
           DispatchMessageA(&message);
         }
 
-        renderCheckeredGradient(xOffset, yOffset);
+        RenderCheckeredGradient(xOffset, yOffset);
 
         RECT clientRect;
         GetClientRect(windowHandle, &clientRect);
