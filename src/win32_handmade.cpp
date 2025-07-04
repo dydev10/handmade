@@ -100,6 +100,7 @@ internal void Win32ResizeDIBSection(Win32OffScreenBuffer *buffer, int width, int
 }
 
 internal void Win32DisplayBufferInWindow(HDC deviceContext, int windowWidth, int windowHeight, Win32OffScreenBuffer buffer, int x, int y, int width, int height) {
+  // TODO: correct the aspect ratio for stretch
   StretchDIBits(
     deviceContext,
     // x, y, width, height,
