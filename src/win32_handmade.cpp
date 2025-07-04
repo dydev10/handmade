@@ -104,8 +104,8 @@ internal void Win32DisplayBufferInWindow(HDC deviceContext, int windowWidth, int
     deviceContext,
     // x, y, width, height,
     // x, y, width, height, 
-    0, 0, buffer.width, buffer.height,
     0, 0, windowWidth, windowHeight,
+    0, 0, buffer.width, buffer.height,
     buffer.memory,
     &buffer.info,
     DIB_RGB_COLORS,
@@ -116,12 +116,9 @@ internal void Win32DisplayBufferInWindow(HDC deviceContext, int windowWidth, int
 LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wParam, LPARAM lParam) {
   LRESULT result = 0;
   
-  switch (message)
-  {
-    case WM_SIZE: {
-      Win32WindowDimension dimension = Win32GetWindowDimension(window);
-      Win32ResizeDIBSection(&globalBackBuffer, dimension.width, dimension.height);
-    } break;
+  switch (message) {
+//    case WM_SIZE: {
+//    } break;
   
     case WM_DESTROY: {
       // TODO: treat destroy event as error and recovering by recreating window
@@ -163,7 +160,9 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wPara
 
 int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int cmdShow) {  
   WNDCLASSA windowClass = {};
-  
+ 
+  Win32ResizeDIBSection(&globalBackBuffer, 1280, 720);
+
   windowClass.style = CS_HREDRAW | CS_VREDRAW;
   windowClass.lpfnWndProc = Win32MainWindowCallback;
   windowClass.hInstance = instance;
