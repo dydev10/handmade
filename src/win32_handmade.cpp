@@ -268,11 +268,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
           }
         }
 
-        // Test Vibration on first controller
-        XINPUT_VIBRATION vibration;
-        vibration.wLeftMotorSpeed = 30000;  // max value ~6.5k
-        vibration.wRightMotorSpeed = 30000;
-        XInputSetState(0, &vibration);
+        // // Test Vibration on first controller
+        // XINPUT_VIBRATION vibration;
+        // vibration.wLeftMotorSpeed = 30000;  // max value ~6.5k
+        // vibration.wRightMotorSpeed = 30000;
+        // XInputSetState(0, &vibration);
 
         RenderCheckeredGradient(globalBackBuffer, xOffset, yOffset);
 
