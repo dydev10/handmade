@@ -295,6 +295,8 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
             if (aButton) {
               yOffset += 2;
             }
+            xOffset += lStickX >> 12;
+            yOffset += lStickY >> 12;
           } else {
             // Controller is not connected
           }
@@ -311,7 +313,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         Win32WindowDimension dimension = Win32GetWindowDimension(window);
         Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, &globalBackBuffer);
 
-        ++xOffset;
+        // ++xOffset;
         // yOffset += 2;
       }
     } else {
