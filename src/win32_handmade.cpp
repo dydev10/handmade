@@ -164,7 +164,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
  
   Win32ResizeDIBSection(&globalBackBuffer, 1280, 720);
 
-  windowClass.style = CS_HREDRAW | CS_VREDRAW;
+  windowClass.style = CS_HREDRAW | CS_VREDRAW | CS_OWNDC;
   windowClass.lpfnWndProc = Win32MainWindowCallback;
   windowClass.hInstance = instance;
   //windowClass.hIcon = ;
@@ -187,10 +187,13 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
     );
 
     if (window != NULL) {
-      globalRunning = true;
+      // CS_OWNDC flag in windowClass.style means it can get its own DC not shared by anyone. Get it once and use it forever. 
+      HDC deviceContext = GetDC(window);
+      
       int xOffset = 0;
       int yOffset = 0;
         
+      globalRunning = true;
       while (globalRunning) {
         MSG message;
         while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE)) {
@@ -204,9 +207,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         RenderCheckeredGradient(globalBackBuffer, xOffset, yOffset);
 
         Win32WindowDimension dimension = Win32GetWindowDimension(window);
-        HDC deviceContext = GetDC(window);
         Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, globalBackBuffer, 0, 0, dimension.width, dimension.height);
-        ReleaseDC(window, deviceContext);
 
         ++xOffset;
         yOffset += 2;
