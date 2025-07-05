@@ -118,9 +118,6 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wPara
   LRESULT result = 0;
   
   switch (message) {
-//    case WM_SIZE: {
-//    } break;
-  
     case WM_DESTROY: {
       // TODO: treat destroy event as error and recovering by recreating window
       globalRunning = false;
