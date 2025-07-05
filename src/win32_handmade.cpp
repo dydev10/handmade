@@ -160,6 +160,39 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wPara
       OutputDebugStringA("WM_ACTIVATE\n");
     } break;
   
+    case WM_SYSKEYDOWN: // fallthrough
+    case WM_SYSKEYUP: // fallthrough
+    case WM_KEYDOWN:  // fallthrough
+    case WM_KEYUP: {
+      uint32 vKCode = wParam;
+      bool wasDown = ((lParam & (1 << 30)) != 0);
+      bool isDown = ((lParam & (1 << 31)) == 0);
+
+      if (isDown != wasDown) {  // ignore repeating key pressed messages
+        if (vKCode == 'W') {
+        } else if (vKCode == 'A') {
+        } else if (vKCode == 'S') {
+        } else if (vKCode == 'D') {
+        } else if (vKCode == 'Q') {
+        } else if (vKCode == 'E') {
+        } else if (vKCode == VK_UP) {
+        } else if (vKCode == VK_DOWN) {
+        } else if (vKCode == VK_LEFT) {
+        } else if (vKCode == VK_RIGHT) {
+        } else if (vKCode == VK_ESCAPE) {
+        } else if (vKCode == VK_SPACE) {
+          OutputDebugStringA("Pressed SpaceBar:");
+          if (isDown) {
+            OutputDebugStringA(" :isDown");
+          }
+          if (wasDown) {
+            OutputDebugStringA(" :wasDown");
+          }
+          OutputDebugStringA("\n");
+        }
+      }
+    } break;
+  
     case WM_PAINT: {
       PAINTSTRUCT paint;
       HDC deviceContext = BeginPaint(window, &paint);
