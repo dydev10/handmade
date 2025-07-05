@@ -16,6 +16,9 @@ typedef int16_t int16;
 typedef int32_t int32;
 typedef int64_t int64;
 
+// custom bool type to avoid implicit int to bool conversion
+typedef int32 bool32;
+
 struct Win32OffScreenBuffer{
   BITMAPINFO info;
   void *memory;  
@@ -192,6 +195,12 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wPara
           }
           OutputDebugStringA("\n");
         }
+      }
+
+      // support alt+f4 to close app
+      bool32 altKeyWasDown = (lParam & (1 << 29));
+      if (altKeyWasDown && vKCode == VK_F4) {
+        globalRunning = false;
       }
     } break;
   
