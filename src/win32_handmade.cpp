@@ -21,7 +21,6 @@ struct Win32OffScreenBuffer{
   int width;
   int height;
   int pitch;
-  int bytesPerPixel;
 };
 
 struct Win32WindowDimension {
@@ -83,7 +82,8 @@ internal void Win32ResizeDIBSection(Win32OffScreenBuffer *buffer, int width, int
 
   buffer->width = width;
   buffer->height = height;
-  buffer->bytesPerPixel = 4;
+
+  int bytesPerPixel = 4; // 1 byte for padding, 3 bytes for RGB
 
   buffer->info.bmiHeader.biSize = sizeof(buffer->info.bmiHeader);
   buffer->info.bmiHeader.biWidth = buffer->width;
@@ -92,9 +92,9 @@ internal void Win32ResizeDIBSection(Win32OffScreenBuffer *buffer, int width, int
   buffer->info.bmiHeader.biBitCount = 32;
   buffer->info.bmiHeader.biCompression = BI_RGB;
 
-  int bitmapMemorySize = (buffer->width * buffer->height) * buffer->bytesPerPixel;
+  int bitmapMemorySize = (buffer->width * buffer->height) * bytesPerPixel;
   buffer->memory = VirtualAlloc(0, bitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
-  buffer->pitch = buffer->width * buffer->bytesPerPixel;
+  buffer->pitch = buffer->width * bytesPerPixel;
 
   // TODO: clear all pixels in memory to black???
 }
