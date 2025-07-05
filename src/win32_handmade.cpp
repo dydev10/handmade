@@ -99,7 +99,7 @@ internal void Win32ResizeDIBSection(Win32OffScreenBuffer *buffer, int width, int
   // TODO: clear all pixels in memory to black???
 }
 
-internal void Win32DisplayBufferInWindow(HDC deviceContext, int windowWidth, int windowHeight, Win32OffScreenBuffer buffer, int x, int y, int width, int height) {
+internal void Win32DisplayBufferInWindow(HDC deviceContext, int windowWidth, int windowHeight, Win32OffScreenBuffer buffer) {
   // TODO: correct the aspect ratio for stretch
   StretchDIBits(
     deviceContext,
@@ -135,13 +135,9 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wPara
     case WM_PAINT: {
       PAINTSTRUCT paint;
       HDC deviceContext = BeginPaint(window, &paint);
-      int x = paint.rcPaint.left;
-      int y = paint.rcPaint.top;
-      int width = paint.rcPaint.right - x;
-      int height = paint.rcPaint.bottom - y;
 
       Win32WindowDimension dimension = Win32GetWindowDimension(window);
-      Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, globalBackBuffer, x, y, width, height);
+      Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, globalBackBuffer);
 
       EndPaint(window, &paint);
     } break;
@@ -204,7 +200,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         RenderCheckeredGradient(globalBackBuffer, xOffset, yOffset);
 
         Win32WindowDimension dimension = Win32GetWindowDimension(window);
-        Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, globalBackBuffer, 0, 0, dimension.width, dimension.height);
+        Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, globalBackBuffer);
 
         ++xOffset;
         yOffset += 2;
