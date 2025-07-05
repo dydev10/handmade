@@ -61,12 +61,11 @@ internal void Win32LoadXInput(void) {
   }
 }
 
-internal void RenderCheckeredGradient(Win32OffScreenBuffer buffer, int xOffset, int yOffset) {
-  // TODO: pass buffer by value or by pointer???
-  uint8 *row = (uint8 *)buffer.memory;
-  for (int y = 0; y < buffer.height; ++y) {
+internal void RenderCheckeredGradient(Win32OffScreenBuffer *buffer, int xOffset, int yOffset) {
+  uint8 *row = (uint8 *)buffer->memory;
+  for (int y = 0; y < buffer->height; ++y) {
     uint32 *pixel = (uint32 *)row;  
-    for (int x = 0; x < buffer.width; ++x) {
+    for (int x = 0; x < buffer->width; ++x) {
       /*
         offset          : +0 +1 +2 +3
         Pixel in memory : 00 00 00 00
@@ -82,7 +81,7 @@ internal void RenderCheckeredGradient(Win32OffScreenBuffer buffer, int xOffset, 
       *pixel++ = ((g << 8) | b);
     }
 
-    row += buffer.pitch;
+    row += buffer->pitch;
   }
 }
 
@@ -127,16 +126,16 @@ internal void Win32ResizeDIBSection(Win32OffScreenBuffer *buffer, int width, int
   // TODO: clear all pixels in memory to black???
 }
 
-internal void Win32DisplayBufferInWindow(HDC deviceContext, int windowWidth, int windowHeight, Win32OffScreenBuffer buffer) {
+internal void Win32DisplayBufferInWindow(HDC deviceContext, int windowWidth, int windowHeight, Win32OffScreenBuffer *buffer) {
   // TODO: correct the aspect ratio for stretch
   StretchDIBits(
     deviceContext,
     // x, y, width, height,
     // x, y, width, height, 
     0, 0, windowWidth, windowHeight,
-    0, 0, buffer.width, buffer.height,
-    buffer.memory,
-    &buffer.info,
+    0, 0, buffer->width, buffer->height,
+    buffer->memory,
+    &buffer->info,
     DIB_RGB_COLORS,
     SRCCOPY
   );
@@ -198,7 +197,7 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wPara
       HDC deviceContext = BeginPaint(window, &paint);
 
       Win32WindowDimension dimension = Win32GetWindowDimension(window);
-      Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, globalBackBuffer);
+      Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, &globalBackBuffer);
 
       EndPaint(window, &paint);
     } break;
@@ -307,10 +306,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         // vibration.wRightMotorSpeed = 30000;
         // XInputSetState(0, &vibration);
 
-        RenderCheckeredGradient(globalBackBuffer, xOffset, yOffset);
+        RenderCheckeredGradient(&globalBackBuffer, xOffset, yOffset);
 
         Win32WindowDimension dimension = Win32GetWindowDimension(window);
-        Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, globalBackBuffer);
+        Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, &globalBackBuffer);
 
         ++xOffset;
         // yOffset += 2;
