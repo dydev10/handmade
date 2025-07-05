@@ -29,8 +29,8 @@ struct Win32WindowDimension {
   int height;
 };
 
-// TODO: move running to a better place instead of static global
-global_variable bool running;
+// TODO: move globalRunning to a better place instead of static global
+global_variable bool globalRunning;
 global_variable Win32OffScreenBuffer globalBackBuffer;
 
 internal void RenderCheckeredGradient(Win32OffScreenBuffer buffer, int xOffset, int yOffset) {
@@ -123,12 +123,12 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wPara
   
     case WM_DESTROY: {
       // TODO: treat destroy event as error and recovering by recreating window
-      running = false;
+      globalRunning = false;
     } break;
   
     case WM_CLOSE: {
       // TODO: ask user to confirm before closing window
-      running = false;
+      globalRunning = false;
     } break;
   
     case WM_ACTIVATE: {
@@ -187,15 +187,15 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
     );
 
     if (window != NULL) {
-      running = true;
+      globalRunning = true;
       int xOffset = 0;
       int yOffset = 0;
         
-      while (running) {
+      while (globalRunning) {
         MSG message;
         while (PeekMessageA(&message, 0, 0, 0, PM_REMOVE)) {
           if (message.message == WM_QUIT) {
-            running = false;
+            globalRunning = false;
           }
           TranslateMessage(&message);
           DispatchMessageA(&message);
