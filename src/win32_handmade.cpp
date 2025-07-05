@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdint.h>
+#include <xinput.h>
 
 #define internal static
 #define local_persist static
@@ -32,6 +33,34 @@ struct Win32WindowDimension {
 global_variable bool globalRunning;
 global_variable Win32OffScreenBuffer globalBackBuffer;
 
+// XInput function typedef and macros to support dynamic loading of functionality from dll
+// XInputGetState
+#define X_INPUT_GET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_STATE* pState)
+typedef X_INPUT_GET_STATE(x_input_get_state);
+X_INPUT_GET_STATE(XInputGetStateStub) {
+  return 0;
+}
+global_variable x_input_get_state *XInputGetState_ = XInputGetStateStub;
+#define XInputGetState XInputGetState_ 
+
+// XInputSetState
+#define X_INPUT_SET_STATE(name) DWORD WINAPI name(DWORD dwUserIndex, XINPUT_VIBRATION* pVibration)
+typedef X_INPUT_SET_STATE(x_input_set_state);
+X_INPUT_SET_STATE(XInputSetStateStub) {
+  return 0;
+}
+global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
+#define XInputSetState XInputSetState_
+
+internal void Win32LoadXInput(void) {
+  HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
+
+  if (XInputLibrary) {
+    XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
+    XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
+  }
+}
+
 internal void RenderCheckeredGradient(Win32OffScreenBuffer buffer, int xOffset, int yOffset) {
   // TODO: pass buffer by value or by pointer???
   uint8 *row = (uint8 *)buffer.memory;
@@ -62,7 +91,7 @@ internal void RenderCheckeredGradient(Win32OffScreenBuffer buffer, int xOffset, 
  * All function win Win32 prefix are custom functions to deal Windows API layer
  */
 
-Win32WindowDimension Win32GetWindowDimension(HWND window) {
+internal Win32WindowDimension Win32GetWindowDimension(HWND window) {
   RECT clientRect;
   GetClientRect(window, &clientRect);
   
@@ -72,7 +101,6 @@ Win32WindowDimension Win32GetWindowDimension(HWND window) {
 
   return result; 
 }
-
 
 internal void Win32ResizeDIBSection(Win32OffScreenBuffer *buffer, int width, int height) {
   // TODO: try allocation before free
@@ -151,8 +179,9 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wPara
   return result;
 }
 
+int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int cmdShow) {
+  Win32LoadXInput();
 
-int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int cmdShow) {  
   WNDCLASSA windowClass = {};
  
   Win32ResizeDIBSection(&globalBackBuffer, 1280, 720);
@@ -197,13 +226,61 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
           DispatchMessageA(&message);
         }
 
+        // TODO: more frequent polling??
+        for (DWORD controllerIndex=0; controllerIndex< XUSER_MAX_COUNT; ++controllerIndex) {
+          XINPUT_STATE controllerState;
+          // ZeroMemory( &controllerState, sizeof(XINPUT_STATE) );
+              
+          if(XInputGetState(controllerIndex, &controllerState) == ERROR_SUCCESS) {
+            // Controller is connected
+            // TODO: check if controllerState.dwPacketNumber is not increasing too much, should be same or +1 for each poll
+            XINPUT_GAMEPAD *gamepad = &controllerState.Gamepad;
+
+            bool up = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+            bool down = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+            bool left = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+            bool right = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+            bool start = (gamepad->wButtons & XINPUT_GAMEPAD_START);
+            bool back = (gamepad->wButtons & XINPUT_GAMEPAD_BACK);
+            bool leftThumb = (gamepad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
+            bool rightThumb = (gamepad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
+            bool leftShoulder = (gamepad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+            bool rightShoulder = (gamepad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+            bool aButton = (gamepad->wButtons & XINPUT_GAMEPAD_A);
+            bool bButton = (gamepad->wButtons & XINPUT_GAMEPAD_B);
+            bool xButton = (gamepad->wButtons & XINPUT_GAMEPAD_X);
+            bool yButton = (gamepad->wButtons & XINPUT_GAMEPAD_Y);
+
+            uint8 lTrigger = gamepad->bLeftTrigger;
+            uint8 rTrigger = gamepad->bRightTrigger;
+
+            int16 lStickX = gamepad->sThumbLX;
+            int16 lStickY = gamepad->sThumbLY;
+            int16 rStickX = gamepad->sThumbRX;
+            int16 rStickY = gamepad->sThumbRY;
+
+            // just to test controller working
+            if (aButton) {
+              yOffset += 2;
+            }
+          } else {
+            // Controller is not connected
+          }
+        }
+
+        // Test Vibration on first controller
+        XINPUT_VIBRATION vibration;
+        vibration.wLeftMotorSpeed = 30000;  // max value ~6.5k
+        vibration.wRightMotorSpeed = 30000;
+        XInputSetState(0, &vibration);
+
         RenderCheckeredGradient(globalBackBuffer, xOffset, yOffset);
 
         Win32WindowDimension dimension = Win32GetWindowDimension(window);
         Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, globalBackBuffer);
 
         ++xOffset;
-        yOffset += 2;
+        // yOffset += 2;
       }
     } else {
       // TODO: error logging
