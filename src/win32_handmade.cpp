@@ -485,10 +485,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
           DWORD byteToLock = (soundOutput.runningSampleIndex * soundOutput.bytesPerSample) % soundOutput.dsBufferSize;
           DWORD bytesToWrite;
           // TODO: change this to use lower latency offset from playcursor
-          if (byteToLock == playCursor) {
-            // only happens at startup, fill whole buffer here
-            bytesToWrite = 0;
-          } else if (byteToLock > playCursor) {
+          if (byteToLock > playCursor) {
             bytesToWrite = soundOutput.dsBufferSize - byteToLock;
             bytesToWrite += playCursor;
           } else {
