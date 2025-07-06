@@ -341,9 +341,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       int squareWavePeriod = samplesPerSec / toneHz;
       int halfSquareWavePeriod = squareWavePeriod / 2;
       uint32 runningSampleIndex = 0;
+      bool soundPlaying = false;
       
       Win32InitDSound(window, samplesPerSec, dsBufferSize);
-      globalDSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
       globalRunning = true;
       while (globalRunning) {
@@ -415,7 +415,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         if (SUCCEEDED(globalDSoundBuffer->GetCurrentPosition(&playCursor, &writeCursor))) {
           DWORD byteToLock = (runningSampleIndex * bytesPerSample) % dsBufferSize;
           DWORD bytesToWrite;
-          if (byteToLock > playCursor) {
+          if (byteToLock == playCursor) {
+            // only happens at startup, fill whole buffer here
+            bytesToWrite = dsBufferSize;
+          } else if (byteToLock > playCursor) {
             bytesToWrite = dsBufferSize - byteToLock;
             bytesToWrite += playCursor;
           } else {
@@ -462,6 +465,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
             // Unlock sound buffer after writing samples
             globalDSoundBuffer->Unlock(region1, region1Size, region2, region2Size);
           }
+        }
+
+        // Start playing test sound
+        if (!soundPlaying) {
+          soundPlaying = true;
+          globalDSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
         }
 
         Win32WindowDimension dimension = Win32GetWindowDimension(window);
