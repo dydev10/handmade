@@ -36,6 +36,7 @@ struct Win32WindowDimension {
 // TODO: move globalRunning to a better place instead of static global
 global_variable bool globalRunning;
 global_variable Win32OffScreenBuffer globalBackBuffer;
+global_variable LPDIRECTSOUNDBUFFER globalDSoundBuffer;
 
 // XInput function typedef and macros to support dynamic loading of functionality from dll
 // XInputGetState
@@ -99,7 +100,7 @@ internal void Win32InitDSound(HWND window, int32 samplesPerSec, int32 bufferSize
       if (SUCCEEDED(DirectSound->SetCooperativeLevel(window, DSSCL_PRIORITY))) {
         // Step: Create primary buffer
         DSBUFFERDESC bufferDescription = {}; // should call ZeroMemory or always use zero init
-        // TODO: wanna play sound in background? use DSBCAPS_GLOBALFOCUS
+        // TODO: wanna play sound in background? use DSBCAPS_GLOBALFOCUS flag in dwFlags
         bufferDescription.dwSize = sizeof(bufferDescription);
         bufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
         LPDIRECTSOUNDBUFFER primaryBuffer;
@@ -123,8 +124,7 @@ internal void Win32InitDSound(HWND window, int32 samplesPerSec, int32 bufferSize
       bufferDescription.dwFlags = 0;
       bufferDescription.dwBufferBytes = bufferSize;
       bufferDescription.lpwfxFormat = &waveFormat;
-      LPDIRECTSOUNDBUFFER secondaryBuffer;
-      if (SUCCEEDED(DirectSound->CreateSoundBuffer(&bufferDescription, &secondaryBuffer, 0))) {
+      if (SUCCEEDED(DirectSound->CreateSoundBuffer(&bufferDescription, &globalDSoundBuffer, 0))) {
         OutputDebugStringA("Secondary buffer was created\n");
       } else {
         // TODO: print diagnostics/warnings
@@ -328,10 +328,22 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       // CS_OWNDC flag in windowClass.style means it can get its own DC not shared by anyone. Get it once and use it forever. 
       HDC deviceContext = GetDC(window);
       
+      // Renderer test state
       int xOffset = 0;
       int yOffset = 0;
+
+      // Sound test state
+      int samplesPerSec = 48000;
+      int toneHz = 256;
+      int16 toneVolume = 2000;
+      int bytesPerSample = 2 * sizeof(int16);
+      int dsBufferSize = samplesPerSec * bytesPerSample;
+      int squareWavePeriod = samplesPerSec / toneHz;
+      int halfSquareWavePeriod = squareWavePeriod / 2;
+      uint32 runningSampleIndex = 0;
       
-      Win32InitDSound(window, 48000, 48000 * 2 * sizeof(int16));
+      Win32InitDSound(window, samplesPerSec, dsBufferSize);
+      globalDSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
       globalRunning = true;
       while (globalRunning) {
@@ -394,7 +406,63 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         // vibration.wRightMotorSpeed = 30000;
         // XInputSetState(0, &vibration);
 
+        // Render buffer output test
         RenderCheckeredGradient(&globalBackBuffer, xOffset, yOffset);
+
+        // DirectSound output test
+        DWORD playCursor;
+        DWORD writeCursor;
+        if (SUCCEEDED(globalDSoundBuffer->GetCurrentPosition(&playCursor, &writeCursor))) {
+          DWORD byteToLock = (runningSampleIndex * bytesPerSample) % dsBufferSize;
+          DWORD bytesToWrite;
+          if (byteToLock > playCursor) {
+            bytesToWrite = dsBufferSize - byteToLock;
+            bytesToWrite += playCursor;
+          } else {
+            bytesToWrite = playCursor - byteToLock;
+          }
+
+          /*
+            buffer with 2 channel : [left right] left right ..
+            data                  : int16 int16  int16  int16
+            sample can sometimes mean both left and write values together(32 bit) or sometimes just a single channel(16 bit)  
+
+          */
+          void *region1;
+          DWORD region1Size;
+          void *region2;
+          DWORD region2Size;
+          // TODO: more testing needed, still weird breaks when resizing window rapidly
+
+          HRESULT dsBufferLock = globalDSoundBuffer->Lock(
+            byteToLock, bytesToWrite,
+            &region1, &region1Size,
+            &region2, &region2Size,
+            0
+          );
+          if (SUCCEEDED(dsBufferLock)) {
+            // TODO: assert region sizes are valid(multiples of 32 bit for 2 channels)
+            int16 *sampleOut = (int16 *)region1;
+            DWORD region1SampleCount = region1Size / bytesPerSample; 
+            for (DWORD sampleIndex = 0; sampleIndex < region1SampleCount; ++sampleIndex){
+              int16 sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
+              *sampleOut++ = sampleValue;
+              *sampleOut++ = sampleValue;
+              ++runningSampleIndex;
+            }
+            sampleOut = (int16 *)region2;
+            DWORD region2SampleCount = region2Size / bytesPerSample; 
+            for (DWORD sampleIndex = 0; sampleIndex < region2SampleCount; ++sampleIndex){
+              int16 sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
+              *sampleOut++ = sampleValue;
+              *sampleOut++ = sampleValue;
+              ++runningSampleIndex;
+            }
+
+            // Unlock sound buffer after writing samples
+            globalDSoundBuffer->Unlock(region1, region1Size, region2, region2Size);
+          }
+        }
 
         Win32WindowDimension dimension = Win32GetWindowDimension(window);
         Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, &globalBackBuffer);
