@@ -361,7 +361,7 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wPara
   
     default: {
 //      OutputDebugStringA("default\n");
-      result = DefWindowProc(window, message, wParam, lParam);
+      result = DefWindowProcA(window, message, wParam, lParam);
     } break;
   }
 
@@ -472,8 +472,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
             if (aButton) {
               yOffset += 2;
             }
-            xOffset += lStickX >> 12;
-            yOffset += lStickY >> 12;
+            // TODO: handle deadzone properly, not divide by random big values
+            xOffset += lStickX / 4096;  // divide by a random big number to scale down input, and ignore deadzone inputs
+            yOffset += lStickY / 4096;
 
             // affecting sound with controller
             soundOutput.toneHz = 512 + (int)256*((real32)lStickY / 30000.0f);
