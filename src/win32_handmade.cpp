@@ -198,7 +198,7 @@ internal void Win32ResizeDIBSection(Win32OffScreenBuffer *buffer, int width, int
   buffer->info.bmiHeader.biCompression = BI_RGB;
 
   int bitmapMemorySize = (buffer->width * buffer->height) * bytesPerPixel;
-  buffer->memory = VirtualAlloc(0, bitmapMemorySize, MEM_COMMIT, PAGE_READWRITE);
+  buffer->memory = VirtualAlloc(0, bitmapMemorySize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
   buffer->pitch = buffer->width * bytesPerPixel;
 
   // TODO: clear all pixels in memory to black???
