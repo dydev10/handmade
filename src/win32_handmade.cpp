@@ -52,7 +52,7 @@ struct Win32SoundOutput {
 };
 
 // TODO: move globalRunning to a better place instead of static global
-global_variable bool globalRunning;
+global_variable bool32 globalRunning;
 global_variable Win32OffScreenBuffer globalBackBuffer;
 global_variable LPDIRECTSOUNDBUFFER globalDSoundBuffer;
 
@@ -309,8 +309,8 @@ LRESULT CALLBACK Win32MainWindowCallback(HWND window, UINT message, WPARAM wPara
     case WM_KEYDOWN:  // fallthrough
     case WM_KEYUP: {
       uint32 vKCode = wParam;
-      bool wasDown = ((lParam & (1 << 30)) != 0);
-      bool isDown = ((lParam & (1 << 31)) == 0);
+      bool32 wasDown = ((lParam & (1 << 30)) != 0);
+      bool32 isDown = ((lParam & (1 << 31)) == 0);
 
       if (isDown != wasDown) {  // ignore repeating key pressed messages
         if (vKCode == 'W') {
@@ -439,20 +439,20 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
             // TODO: check if controllerState.dwPacketNumber is not increasing too much, should be same or +1 for each poll
             XINPUT_GAMEPAD *gamepad = &controllerState.Gamepad;
 
-            bool up = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
-            bool down = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
-            bool left = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
-            bool right = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
-            bool start = (gamepad->wButtons & XINPUT_GAMEPAD_START);
-            bool back = (gamepad->wButtons & XINPUT_GAMEPAD_BACK);
-            bool leftThumb = (gamepad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
-            bool rightThumb = (gamepad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
-            bool leftShoulder = (gamepad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
-            bool rightShoulder = (gamepad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
-            bool aButton = (gamepad->wButtons & XINPUT_GAMEPAD_A);
-            bool bButton = (gamepad->wButtons & XINPUT_GAMEPAD_B);
-            bool xButton = (gamepad->wButtons & XINPUT_GAMEPAD_X);
-            bool yButton = (gamepad->wButtons & XINPUT_GAMEPAD_Y);
+            bool32 up = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_UP);
+            bool32 down = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_DOWN);
+            bool32 left = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_LEFT);
+            bool32 right = (gamepad->wButtons & XINPUT_GAMEPAD_DPAD_RIGHT);
+            bool32 start = (gamepad->wButtons & XINPUT_GAMEPAD_START);
+            bool32 back = (gamepad->wButtons & XINPUT_GAMEPAD_BACK);
+            bool32 leftThumb = (gamepad->wButtons & XINPUT_GAMEPAD_LEFT_THUMB);
+            bool32 rightThumb = (gamepad->wButtons & XINPUT_GAMEPAD_RIGHT_THUMB);
+            bool32 leftShoulder = (gamepad->wButtons & XINPUT_GAMEPAD_LEFT_SHOULDER);
+            bool32 rightShoulder = (gamepad->wButtons & XINPUT_GAMEPAD_RIGHT_SHOULDER);
+            bool32 aButton = (gamepad->wButtons & XINPUT_GAMEPAD_A);
+            bool32 bButton = (gamepad->wButtons & XINPUT_GAMEPAD_B);
+            bool32 xButton = (gamepad->wButtons & XINPUT_GAMEPAD_X);
+            bool32 yButton = (gamepad->wButtons & XINPUT_GAMEPAD_Y);
 
             uint8 lTrigger = gamepad->bLeftTrigger;
             uint8 rTrigger = gamepad->bRightTrigger;
