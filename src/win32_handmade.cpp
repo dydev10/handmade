@@ -47,6 +47,8 @@ struct Win32SoundOutput {
   int wavePeriod;
   int bytesPerSample;
   int dsBufferSize;
+  real32 tSine;
+  int latencySampleCount;
 };
 
 // TODO: move globalRunning to a better place instead of static global
@@ -179,23 +181,23 @@ internal void Win32FillSoundBuffer(Win32SoundOutput *soundOutput, DWORD byteToLo
     int16 *sampleOut = (int16 *)region1;
     DWORD region1SampleCount = region1Size / soundOutput->bytesPerSample; 
     for (DWORD sampleIndex = 0; sampleIndex < region1SampleCount; ++sampleIndex) {
-      real32 t = 2.0f * Pi32 * ((real32)soundOutput->runningSampleIndex / (real32)soundOutput->wavePeriod);
-      real32 sineValue = sinf(t);
+      real32 sineValue = sinf(soundOutput->tSine);
       int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
       *sampleOut++ = sampleValue;
       *sampleOut++ = sampleValue;
 
+      soundOutput->tSine += 2.0f * Pi32 * 1.0f / (real32)soundOutput->wavePeriod;
       ++soundOutput->runningSampleIndex;
     }
     sampleOut = (int16 *)region2;
     DWORD region2SampleCount = region2Size / soundOutput->bytesPerSample; 
     for (DWORD sampleIndex = 0; sampleIndex < region2SampleCount; ++sampleIndex) {
-      real32 t = 2.0f * Pi32 * ((real32)soundOutput->runningSampleIndex / (real32)soundOutput->wavePeriod);
-      real32 sineValue = sinf(t);
+      real32 sineValue = sinf(soundOutput->tSine);
       int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
       *sampleOut++ = sampleValue;
       *sampleOut++ = sampleValue;
 
+      soundOutput->tSine += 2.0f * Pi32 * 1.0f / (real32)soundOutput->wavePeriod;
       ++soundOutput->runningSampleIndex;
     }
 
@@ -407,9 +409,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       soundOutput.wavePeriod = soundOutput.samplesPerSec / soundOutput.toneHz;
       soundOutput.bytesPerSample = 2 * sizeof(int16);
       soundOutput.dsBufferSize = soundOutput.samplesPerSec * soundOutput.bytesPerSample;
+      soundOutput.tSine = 0.0f;
+      soundOutput.latencySampleCount = soundOutput.samplesPerSec / 15;
       
       Win32InitDSound(window, soundOutput.samplesPerSec, soundOutput.dsBufferSize);
-      Win32FillSoundBuffer(&soundOutput, 0, soundOutput.dsBufferSize);
+      Win32FillSoundBuffer(&soundOutput, 0, soundOutput.latencySampleCount * soundOutput.bytesPerSample);
 
       // Start playing test sound
       globalDSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
@@ -464,6 +468,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
             }
             xOffset += lStickX >> 12;
             yOffset += lStickY >> 12;
+
+            // affecting sound with controller
+            soundOutput.toneHz = 512 + (int)256*((real32)lStickY / 30000.0f);
+            soundOutput.wavePeriod = soundOutput.samplesPerSec / soundOutput.toneHz;
           } else {
             // Controller is not connected
           }
@@ -483,13 +491,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         DWORD writeCursor;
         if (SUCCEEDED(globalDSoundBuffer->GetCurrentPosition(&playCursor, &writeCursor))) {
           DWORD byteToLock = (soundOutput.runningSampleIndex * soundOutput.bytesPerSample) % soundOutput.dsBufferSize;
+          DWORD targetCursor = (playCursor + (soundOutput.latencySampleCount * soundOutput.bytesPerSample)) % soundOutput.dsBufferSize;
           DWORD bytesToWrite;
           // TODO: change this to use lower latency offset from playcursor
-          if (byteToLock > playCursor) {
+          if (byteToLock > targetCursor) {
             bytesToWrite = soundOutput.dsBufferSize - byteToLock;
-            bytesToWrite += playCursor;
+            bytesToWrite += targetCursor;
           } else {
-            bytesToWrite = playCursor - byteToLock;
+            bytesToWrite = targetCursor - byteToLock;
           }
 
           Win32FillSoundBuffer(&soundOutput, byteToLock, bytesToWrite);
