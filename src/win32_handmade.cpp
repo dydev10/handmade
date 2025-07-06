@@ -1,6 +1,7 @@
 #include <windows.h>
 #include <stdint.h>
 #include <xinput.h>
+#include <dsound.h>
 
 #define internal static
 #define local_persist static
@@ -55,15 +56,86 @@ X_INPUT_SET_STATE(XInputSetStateStub) {
 global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 #define XInputSetState XInputSetState_
 
+// DirectSound typedef and macros to support dynamic loading from dll
+// DirectSoundCreate
+#define DIRECT_SOUND_CREATE(name) HRESULT WINAPI name(LPCGUID pcGuidDevice, LPDIRECTSOUND *ppDS, LPUNKNOWN pUnkOuter)
+typedef DIRECT_SOUND_CREATE(direct_sound_create);
+
 internal void Win32LoadXInput(void) {
   HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
   if (!XInputLibrary) {
+    // TODO: print diagnostic/warnings
     HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
   }
 
   if (XInputLibrary) {
     XInputGetState = (x_input_get_state *)GetProcAddress(XInputLibrary, "XInputGetState");
     XInputSetState = (x_input_set_state *)GetProcAddress(XInputLibrary, "XInputSetState");
+  } else {
+    // TODO: print diagnostic/warnings
+  }
+}
+
+internal void Win32InitDSound(HWND window, int32 samplesPerSec, int32 bufferSize) {
+  // Step: Load the library
+  HMODULE DSoundLibrary = LoadLibraryA("dsound.dll");
+
+  if (DSoundLibrary) {
+    // Step: Get a DirectSound object
+    direct_sound_create *DirectSoundCreate = (direct_sound_create *)GetProcAddress(DSoundLibrary, "DirectSoundCreate");
+    
+    LPDIRECTSOUND DirectSound;
+    if (DirectSoundCreate && SUCCEEDED(DirectSoundCreate(0, &DirectSound, 0))) {
+      WAVEFORMATEX waveFormat = {};
+      waveFormat.wFormatTag = WAVE_FORMAT_PCM;
+      waveFormat.nChannels = 2;
+      waveFormat.nSamplesPerSec = samplesPerSec;
+      waveFormat.wBitsPerSample = 16;
+      waveFormat.nBlockAlign = (waveFormat.nChannels * waveFormat.wBitsPerSample) / 8;
+      waveFormat.nAvgBytesPerSec = waveFormat.nSamplesPerSec * waveFormat.nBlockAlign;
+      waveFormat.cbSize = 0;
+
+      // Step: Set cooperative level of DirectSound object
+      if (SUCCEEDED(DirectSound->SetCooperativeLevel(window, DSSCL_PRIORITY))) {
+        // Step: Create primary buffer
+        DSBUFFERDESC bufferDescription = {}; // should call ZeroMemory or always use zero init
+        // TODO: wanna play sound in background? use DSBCAPS_GLOBALFOCUS
+        bufferDescription.dwSize = sizeof(bufferDescription);
+        bufferDescription.dwFlags = DSBCAPS_PRIMARYBUFFER;
+        LPDIRECTSOUNDBUFFER primaryBuffer;
+        if (SUCCEEDED(DirectSound->CreateSoundBuffer(&bufferDescription, &primaryBuffer, 0))) {
+          if (SUCCEEDED(primaryBuffer->SetFormat(&waveFormat))) {
+            OutputDebugStringA("Primary buffer format was set\n");
+          } else {
+            // TODO: print diagnostics/warnings
+          }
+        } else {
+          // TODO: print diagnostics/warnings
+        }
+      } else {
+        // TODO: print diagnostic/warnings
+      }
+
+      // Step: Create secondary buffer
+      DSBUFFERDESC bufferDescription = {};
+      // TODO: maybe use DSBCAPS_GETCURRENTPOSITION2
+      bufferDescription.dwSize = sizeof(bufferDescription);
+      bufferDescription.dwFlags = 0;
+      bufferDescription.dwBufferBytes = bufferSize;
+      bufferDescription.lpwfxFormat = &waveFormat;
+      LPDIRECTSOUNDBUFFER secondaryBuffer;
+      if (SUCCEEDED(DirectSound->CreateSoundBuffer(&bufferDescription, &secondaryBuffer, 0))) {
+        OutputDebugStringA("Secondary buffer was created\n");
+      } else {
+        // TODO: print diagnostics/warnings
+      }
+
+      // Step: Start playing
+    } else {
+      // TODO: print diagnostic/warnings
+    }
+  } else {
+    // TODO: print diagnostic/warnings
   }
 }
 
@@ -258,7 +330,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       
       int xOffset = 0;
       int yOffset = 0;
-        
+      
+      Win32InitDSound(window, 48000, 48000 * 2 * sizeof(int16));
+
       globalRunning = true;
       while (globalRunning) {
         MSG message;
