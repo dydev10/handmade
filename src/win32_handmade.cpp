@@ -82,9 +82,15 @@ typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
 internal void Win32LoadXInput(void) {
   HMODULE XInputLibrary = LoadLibraryA("xinput1_4.dll");
+  // use xinput1_3.dll as fallback
   if (!XInputLibrary) {
     // TODO: print diagnostic/warnings
     HMODULE XInputLibrary = LoadLibraryA("xinput1_3.dll");
+  }
+  // use xinput9_1_0.dll as fallback
+  if (!XInputLibrary) {
+    // TODO: print diagnostic/warnings
+    HMODULE XInputLibrary = LoadLibraryA("xinput9_1_0.dll");
   }
 
   if (XInputLibrary) {
