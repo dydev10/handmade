@@ -2,10 +2,13 @@
 #include <stdint.h>
 #include <xinput.h>
 #include <dsound.h>
+#include <math.h>
 
 #define internal static
 #define local_persist static
 #define global_variable static
+
+#define Pi32 3.14159265359
 
 typedef uint8_t uint8;
 typedef uint16_t uint16;
@@ -20,6 +23,9 @@ typedef int64_t int64;
 // custom bool type to avoid implicit int to bool conversion
 typedef int32 bool32;
 
+typedef float real32;
+typedef double real64;
+
 struct Win32OffScreenBuffer{
   BITMAPINFO info;
   void *memory;  
@@ -31,6 +37,16 @@ struct Win32OffScreenBuffer{
 struct Win32WindowDimension {
   int width;
   int height;
+};
+
+struct Win32SoundOutput {
+  int samplesPerSec;
+  int toneHz;
+  int16 toneVolume;
+  uint32 runningSampleIndex;
+  int wavePeriod;
+  int bytesPerSample;
+  int dsBufferSize;
 };
 
 // TODO: move globalRunning to a better place instead of static global
@@ -136,6 +152,55 @@ internal void Win32InitDSound(HWND window, int32 samplesPerSec, int32 bufferSize
     }
   } else {
     // TODO: print diagnostic/warnings
+  }
+}
+
+internal void Win32FillSoundBuffer(Win32SoundOutput *soundOutput, DWORD byteToLock, DWORD bytesToWrite) {
+  /*
+    buffer with 2 channel : [left right] left right ..
+    data                  : int16 int16  int16  int16
+    sample can sometimes mean both left and write values together(32 bit) or sometimes just a single channel(16 bit)  
+
+  */
+  void *region1;
+  DWORD region1Size;
+  void *region2;
+  DWORD region2Size;
+  // TODO: more testing needed, still weird breaks when resizing window rapidly
+
+  HRESULT dsBufferLock = globalDSoundBuffer->Lock(
+    byteToLock, bytesToWrite,
+    &region1, &region1Size,
+    &region2, &region2Size,
+    0
+  );
+  if (SUCCEEDED(dsBufferLock)) {
+    // TODO: assert region sizes are valid(multiples of 32 bit for 2 channels)
+    int16 *sampleOut = (int16 *)region1;
+    DWORD region1SampleCount = region1Size / soundOutput->bytesPerSample; 
+    for (DWORD sampleIndex = 0; sampleIndex < region1SampleCount; ++sampleIndex) {
+      real32 t = 2.0f * Pi32 * ((real32)soundOutput->runningSampleIndex / (real32)soundOutput->wavePeriod);
+      real32 sineValue = sinf(t);
+      int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
+      *sampleOut++ = sampleValue;
+      *sampleOut++ = sampleValue;
+
+      ++soundOutput->runningSampleIndex;
+    }
+    sampleOut = (int16 *)region2;
+    DWORD region2SampleCount = region2Size / soundOutput->bytesPerSample; 
+    for (DWORD sampleIndex = 0; sampleIndex < region2SampleCount; ++sampleIndex) {
+      real32 t = 2.0f * Pi32 * ((real32)soundOutput->runningSampleIndex / (real32)soundOutput->wavePeriod);
+      real32 sineValue = sinf(t);
+      int16 sampleValue = (int16)(sineValue * soundOutput->toneVolume);
+      *sampleOut++ = sampleValue;
+      *sampleOut++ = sampleValue;
+
+      ++soundOutput->runningSampleIndex;
+    }
+
+    // Unlock sound buffer after writing samples
+    globalDSoundBuffer->Unlock(region1, region1Size, region2, region2Size);
   }
 }
 
@@ -333,17 +398,21 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       int yOffset = 0;
 
       // Sound test state
-      int samplesPerSec = 48000;
-      int toneHz = 256;
-      int16 toneVolume = 2000;
-      int bytesPerSample = 2 * sizeof(int16);
-      int dsBufferSize = samplesPerSec * bytesPerSample;
-      int squareWavePeriod = samplesPerSec / toneHz;
-      int halfSquareWavePeriod = squareWavePeriod / 2;
-      uint32 runningSampleIndex = 0;
-      bool soundPlaying = false;
+      Win32SoundOutput soundOutput = {};
       
-      Win32InitDSound(window, samplesPerSec, dsBufferSize);
+      soundOutput.samplesPerSec = 48000;
+      soundOutput.toneHz = 256;
+      soundOutput.toneVolume = 2000;
+      soundOutput.runningSampleIndex = 0;
+      soundOutput.wavePeriod = soundOutput.samplesPerSec / soundOutput.toneHz;
+      soundOutput.bytesPerSample = 2 * sizeof(int16);
+      soundOutput.dsBufferSize = soundOutput.samplesPerSec * soundOutput.bytesPerSample;
+      
+      Win32InitDSound(window, soundOutput.samplesPerSec, soundOutput.dsBufferSize);
+      Win32FillSoundBuffer(&soundOutput, 0, soundOutput.dsBufferSize);
+
+      // Start playing test sound
+      globalDSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
       globalRunning = true;
       while (globalRunning) {
@@ -413,64 +482,20 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         DWORD playCursor;
         DWORD writeCursor;
         if (SUCCEEDED(globalDSoundBuffer->GetCurrentPosition(&playCursor, &writeCursor))) {
-          DWORD byteToLock = (runningSampleIndex * bytesPerSample) % dsBufferSize;
+          DWORD byteToLock = (soundOutput.runningSampleIndex * soundOutput.bytesPerSample) % soundOutput.dsBufferSize;
           DWORD bytesToWrite;
+          // TODO: change this to use lower latency offset from playcursor
           if (byteToLock == playCursor) {
             // only happens at startup, fill whole buffer here
-            bytesToWrite = dsBufferSize;
+            bytesToWrite = 0;
           } else if (byteToLock > playCursor) {
-            bytesToWrite = dsBufferSize - byteToLock;
+            bytesToWrite = soundOutput.dsBufferSize - byteToLock;
             bytesToWrite += playCursor;
           } else {
             bytesToWrite = playCursor - byteToLock;
           }
 
-          /*
-            buffer with 2 channel : [left right] left right ..
-            data                  : int16 int16  int16  int16
-            sample can sometimes mean both left and write values together(32 bit) or sometimes just a single channel(16 bit)  
-
-          */
-          void *region1;
-          DWORD region1Size;
-          void *region2;
-          DWORD region2Size;
-          // TODO: more testing needed, still weird breaks when resizing window rapidly
-
-          HRESULT dsBufferLock = globalDSoundBuffer->Lock(
-            byteToLock, bytesToWrite,
-            &region1, &region1Size,
-            &region2, &region2Size,
-            0
-          );
-          if (SUCCEEDED(dsBufferLock)) {
-            // TODO: assert region sizes are valid(multiples of 32 bit for 2 channels)
-            int16 *sampleOut = (int16 *)region1;
-            DWORD region1SampleCount = region1Size / bytesPerSample; 
-            for (DWORD sampleIndex = 0; sampleIndex < region1SampleCount; ++sampleIndex){
-              int16 sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
-              *sampleOut++ = sampleValue;
-              *sampleOut++ = sampleValue;
-              ++runningSampleIndex;
-            }
-            sampleOut = (int16 *)region2;
-            DWORD region2SampleCount = region2Size / bytesPerSample; 
-            for (DWORD sampleIndex = 0; sampleIndex < region2SampleCount; ++sampleIndex){
-              int16 sampleValue = ((runningSampleIndex / halfSquareWavePeriod) % 2) ? toneVolume : -toneVolume;
-              *sampleOut++ = sampleValue;
-              *sampleOut++ = sampleValue;
-              ++runningSampleIndex;
-            }
-
-            // Unlock sound buffer after writing samples
-            globalDSoundBuffer->Unlock(region1, region1Size, region2, region2Size);
-          }
-        }
-
-        // Start playing test sound
-        if (!soundPlaying) {
-          soundPlaying = true;
-          globalDSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
+          Win32FillSoundBuffer(&soundOutput, byteToLock, bytesToWrite);
         }
 
         Win32WindowDimension dimension = Win32GetWindowDimension(window);
