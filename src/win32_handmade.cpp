@@ -427,7 +427,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       globalDSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
       // Performance CPU Cycle counter
-      int64 lastCycleCounter = __rdtsc();
+      uint64 lastCycleCounter = __rdtsc();
       // Performance time counter
       LARGE_INTEGER lastCounter;
       QueryPerformanceCounter(&lastCounter);
@@ -523,12 +523,12 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, &globalBackBuffer);
 
         // Timing this loop to track performance
-        int64 endCycleCounter = __rdtsc();
+        uint64 endCycleCounter = __rdtsc();
         LARGE_INTEGER endCounter;
         QueryPerformanceCounter(&endCounter);
 
         // TODO: display diff in endCounter and lastCounter
-        int64 cyclesElapsed = endCycleCounter - lastCycleCounter;
+        uint64 cyclesElapsed = endCycleCounter - lastCycleCounter;
         int64 counterElapsed = endCounter.QuadPart - lastCounter.QuadPart;
         real32 msPerFrame =  (1000.0f * (real32)counterElapsed) / (real32)perfCountFrequency;
         real32 fps =  (real32)perfCountFrequency / (real32)counterElapsed;
