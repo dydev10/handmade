@@ -1,5 +1,6 @@
 #include <windows.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <xinput.h>
 #include <dsound.h>
 #include <math.h>
@@ -381,6 +382,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
   //windowClass.hIcon = ;
   windowClass.lpszClassName = "HandmadeEngineWindowClass";
 
+  LARGE_INTEGER perfCountFrequencyResult;
+  QueryPerformanceFrequency(&perfCountFrequencyResult);
+  int64 perfCountFrequency = perfCountFrequencyResult.QuadPart;
+
   if (RegisterClassA(&windowClass)) {
     HWND window = CreateWindowExA(
       0,
@@ -407,7 +412,6 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
 
       // Sound test state
       Win32SoundOutput soundOutput = {};
-      
       soundOutput.samplesPerSec = 48000;
       soundOutput.toneHz = 256;
       soundOutput.toneVolume = 2000;
@@ -417,12 +421,16 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       soundOutput.dsBufferSize = soundOutput.samplesPerSec * soundOutput.bytesPerSample;
       soundOutput.tSine = 0.0f;
       soundOutput.latencySampleCount = soundOutput.samplesPerSec / 15;
-      
       Win32InitDSound(window, soundOutput.samplesPerSec, soundOutput.dsBufferSize);
       Win32FillSoundBuffer(&soundOutput, 0, soundOutput.latencySampleCount * soundOutput.bytesPerSample);
-
       // Start playing test sound
       globalDSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
+
+      // Performance CPU Cycle counter
+      int64 lastCycleCounter = __rdtsc();
+      // Performance time counter
+      LARGE_INTEGER lastCounter;
+      QueryPerformanceCounter(&lastCounter);
 
       globalRunning = true;
       while (globalRunning) {
@@ -514,8 +522,24 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         Win32WindowDimension dimension = Win32GetWindowDimension(window);
         Win32DisplayBufferInWindow(deviceContext, dimension.width, dimension.height, &globalBackBuffer);
 
-        // ++xOffset;
-        // yOffset += 2;
+        // Timing this loop to track performance
+        int64 endCycleCounter = __rdtsc();
+        LARGE_INTEGER endCounter;
+        QueryPerformanceCounter(&endCounter);
+
+        // TODO: display diff in endCounter and lastCounter
+        int64 cyclesElapsed = endCycleCounter - lastCycleCounter;
+        int64 counterElapsed = endCounter.QuadPart - lastCounter.QuadPart;
+        real32 msPerFrame =  (1000.0f * (real32)counterElapsed) / (real32)perfCountFrequency;
+        real32 fps =  (real32)perfCountFrequency / (real32)counterElapsed;
+        real32 megaCyclePerFrame = (real32)cyclesElapsed / (1000.0f * 1000.0f);
+
+        char msPrintBuffer[256];
+        sprintf(msPrintBuffer, "%0.2fms/f,  %0.2ff/s,  %0.2fmc/f\n", msPerFrame, fps, megaCyclePerFrame);
+        OutputDebugStringA(msPrintBuffer);
+
+        lastCycleCounter = endCycleCounter;
+        lastCounter = endCounter;
       }
     } else {
       // TODO: error logging
