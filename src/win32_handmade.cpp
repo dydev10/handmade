@@ -530,9 +530,9 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         // TODO: display diff in endCounter and lastCounter
         uint64 cyclesElapsed = endCycleCounter - lastCycleCounter;
         int64 counterElapsed = endCounter.QuadPart - lastCounter.QuadPart;
-        real32 msPerFrame =  (1000.0f * (real32)counterElapsed) / (real32)perfCountFrequency;
-        real32 fps =  (real32)perfCountFrequency / (real32)counterElapsed;
-        real32 megaCyclePerFrame = (real32)cyclesElapsed / (1000.0f * 1000.0f);
+        real64 msPerFrame =  (1000.0f * (real64)counterElapsed) / (real64)perfCountFrequency;
+        real64 fps =  (real64)perfCountFrequency / (real64)counterElapsed;
+        real64 megaCyclePerFrame = (real64)cyclesElapsed / (1000.0f * 1000.0f);
 
         char msPrintBuffer[256];
         sprintf(msPrintBuffer, "%0.2fms/f,  %0.2ff/s,  %0.2fmc/f\n", msPerFrame, fps, megaCyclePerFrame);
