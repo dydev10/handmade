@@ -19,9 +19,15 @@ struct GameOffScreenBuffer {
   int pitch;
 };
 
+struct GameSoundOutputBuffer {
+  int samplesPerSecond;
+  int sampleCount;
+  int16 *samples;
+};
+
 internal void RenderCheckeredGradient(GameOffScreenBuffer *buffer, int xOffset, int yOffset);
 
 // This functions needs four inputs to update on each frame: timing, user input, bitmap buffer, and sound buffer
-internal void GameUpdateAndRender(GameOffScreenBuffer *buffer, int xOffset, int yOffset);
+internal void GameUpdateAndRender(GameOffScreenBuffer *buffer, int xOffset, int yOffset, GameSoundOutputBuffer *soundBuffer, int toneHz);
 
 #endif /* HANDMADE_H */
