@@ -30,29 +30,7 @@ typedef double real64;
 #include <xinput.h>
 #include <dsound.h>
 
-struct Win32OffScreenBuffer{
-  BITMAPINFO info;
-  void *memory;  
-  int width;
-  int height;
-  int pitch;
-};
-
-struct Win32WindowDimension {
-  int width;
-  int height;
-};
-
-struct Win32SoundOutput {
-  int samplesPerSec;
-  int toneHz;
-  int16 toneVolume;
-  uint32 runningSampleIndex;
-  int wavePeriod;
-  int bytesPerSample;
-  int dsBufferSize;
-  int latencySampleCount;
-};
+#include "win32_handmade.h"
 
 // TODO: move globalRunning to a better place instead of static global
 global_variable bool32 globalRunning;
@@ -192,6 +170,11 @@ internal void Win32ClearSoundBuffer(Win32SoundOutput *soundOutput) {
   }
 
   globalDSoundBuffer->Unlock(region1, region1Size, region2, region2Size);
+}
+
+internal void Win32ProcessXInputDigitalButton(WORD xInputButtonState, WORD buttonBit, GameButtonState *oldState, GameButtonState *newState) {
+  newState->endedDown = (xInputButtonState & buttonBit) == buttonBit;
+  newState->halfTransitionCount = (oldState->endedDown != newState->endedDown) ? 1 : 0;
 }
 
 internal void Win32FillSoundBuffer(Win32SoundOutput *soundOutput, DWORD byteToLock, DWORD bytesToWrite, GameSoundOutputBuffer *sourceBuffer) {
@@ -407,17 +390,10 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       // CS_OWNDC flag in windowClass.style means it can get its own DC not shared by anyone. Get it once and use it forever. 
       HDC deviceContext = GetDC(window);
       
-      // Renderer test state
-      int xOffset = 0;
-      int yOffset = 0;
-
       // Sound test state
       Win32SoundOutput soundOutput = {};
       soundOutput.samplesPerSec = 48000;
-      soundOutput.toneHz = 256;
-      soundOutput.toneVolume = 2000;
       soundOutput.runningSampleIndex = 0;
-      soundOutput.wavePeriod = soundOutput.samplesPerSec / soundOutput.toneHz;
       soundOutput.bytesPerSample = 2 * sizeof(int16);
       soundOutput.dsBufferSize = soundOutput.samplesPerSec * soundOutput.bytesPerSample;
       soundOutput.latencySampleCount = soundOutput.samplesPerSec / 15;
@@ -426,7 +402,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       // Start playing test sound
       globalDSoundBuffer->Play(0, 0, DSBPLAY_LOOPING);
 
-
+      // allocate memory for sound buffer
       int16 *samples = (int16 *)VirtualAlloc(0, soundOutput.dsBufferSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
 
       // Performance CPU Cycle counter
@@ -434,6 +410,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       // Performance time counter
       LARGE_INTEGER lastCounter;
       QueryPerformanceCounter(&lastCounter);
+
+
+      GameInput input[2] = {};
+      GameInput *oldInput = &input[0];
+      GameInput *newInput = &input[1];
 
       globalRunning = true;
       while (globalRunning) {
@@ -447,7 +428,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         }
 
         // TODO: more frequent polling??
+        int maxControllerCount = XUSER_MAX_COUNT;
+        if (maxControllerCount > ArrayCount(newInput->controllers)) {
+          maxControllerCount = ArrayCount(newInput->controllers);
+        }
         for (DWORD controllerIndex=0; controllerIndex< XUSER_MAX_COUNT; ++controllerIndex) {
+          GameControllerInput *oldController = &oldInput->controllers[controllerIndex];
+          GameControllerInput *newController = &newInput->controllers[controllerIndex];
+
           XINPUT_STATE controllerState;
           // ZeroMemory( &controllerState, sizeof(XINPUT_STATE) );
               
@@ -471,25 +459,45 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
             bool32 xButton = (gamepad->wButtons & XINPUT_GAMEPAD_X);
             bool32 yButton = (gamepad->wButtons & XINPUT_GAMEPAD_Y);
 
+            Win32ProcessXInputDigitalButton(gamepad->wButtons, XINPUT_GAMEPAD_A, &oldController->down, &newController->down);
+            Win32ProcessXInputDigitalButton(gamepad->wButtons, XINPUT_GAMEPAD_B, &oldController->right, &newController->right);
+            Win32ProcessXInputDigitalButton(gamepad->wButtons, XINPUT_GAMEPAD_X, &oldController->left, &newController->left);
+            Win32ProcessXInputDigitalButton(gamepad->wButtons, XINPUT_GAMEPAD_Y, &oldController->up, &newController->up);
+            Win32ProcessXInputDigitalButton(gamepad->wButtons, XINPUT_GAMEPAD_LEFT_SHOULDER, &oldController->leftShoulder, &newController->leftShoulder);
+            Win32ProcessXInputDigitalButton(gamepad->wButtons, XINPUT_GAMEPAD_RIGHT_SHOULDER, &oldController->rightShoulder, &newController->rightShoulder);
+
+            newController->isAnalog = true;
+            newController->startX = oldController->startX;
+            newController->startY = oldController->startY;
+
+            real32 lStickX;
+            if (gamepad->sThumbLX < 0) {
+              lStickX = (real32)gamepad->sThumbLX / 32768.0f;
+            } else {
+              lStickX = (real32)gamepad->sThumbLX / 32767.0f;
+            }
+            // TODO: min/max for sticks
+            newController->minX = newController->maxX = newController->endX = lStickX;
+
+            real32 lStickY;
+            if (gamepad->sThumbLY < 0) {
+              lStickY = (real32)gamepad->sThumbLY / 32768.0f;
+            } else {
+              lStickY = (real32)gamepad->sThumbLY / 32767.0f;
+            }
+            // TODO: min/max for sticks
+            newController->minY = newController->maxY = newController->endY = lStickY;
+
+
+            // TODO: handle triggers
             uint8 lTrigger = gamepad->bLeftTrigger;
             uint8 rTrigger = gamepad->bRightTrigger;
 
-            int16 lStickX = gamepad->sThumbLX;
-            int16 lStickY = gamepad->sThumbLY;
+            // TODO: handle right stick too
             int16 rStickX = gamepad->sThumbRX;
             int16 rStickY = gamepad->sThumbRY;
 
-            // just to test controller working
-            if (aButton) {
-              yOffset += 2;
-            }
-            // TODO: handle deadzone properly, not divide by random big values
-            xOffset += lStickX / 4096;  // divide by a random big number to scale down input, and ignore deadzone inputs
-            yOffset += lStickY / 4096;
-
-            // affecting sound with controller
-            soundOutput.toneHz = 512 + (int)256*((real32)lStickY / 30000.0f);
-            soundOutput.wavePeriod = soundOutput.samplesPerSec / soundOutput.toneHz;
+            // TODO: handle deadzone properly, using X_INPUT deadzone values
           } else {
             // Controller is not connected
           }
@@ -533,7 +541,7 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
         buffer.width = globalBackBuffer.width;
         buffer.height = globalBackBuffer.height;
         buffer.pitch = globalBackBuffer.pitch;
-        GameUpdateAndRender(&buffer, xOffset, yOffset, &soundBuffer, soundOutput.toneHz);
+        GameUpdateAndRender(newInput, &buffer, &soundBuffer);
 
         // DirectSound output test
         if (isSoundValid) {
@@ -560,6 +568,11 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
 
         lastCycleCounter = endCycleCounter;
         lastCounter = endCounter;
+
+        // using ping-pong buffers to store and compare inputs between states
+        GameInput *temp = newInput;
+        newInput = oldInput;
+        oldInput = temp;
       }
     } else {
       // TODO: error logging

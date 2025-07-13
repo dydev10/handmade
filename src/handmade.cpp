@@ -40,7 +40,25 @@ internal void RenderCheckeredGradient(GameOffScreenBuffer *buffer, int xOffset, 
   }
 }
 
-internal void GameUpdateAndRender(GameOffScreenBuffer *buffer, int xOffset, int yOffset, GameSoundOutputBuffer *soundBuffer, int toneHz) {
+internal void GameUpdateAndRender(GameInput *input, GameOffScreenBuffer *buffer, GameSoundOutputBuffer *soundBuffer) {
+  local_persist int xOffset= 0;
+  local_persist int yOffset = 0;
+  local_persist int toneHz = 256;
+
+  GameControllerInput *input0 = &input->controllers[0];
+  
+  if (input0->isAnalog) {
+    // handle analog stick
+    xOffset += (int)(4.0f * input0->endX);
+    toneHz = 256 + (int)(128.0f * input0->endY);
+  } else {
+    // handle digital buttons
+  }
+
+  if (input0->down.endedDown) {
+    yOffset += 1;
+  }
+
   OutputGameSound(soundBuffer, toneHz);
   RenderCheckeredGradient(buffer, xOffset, yOffset);
 }
