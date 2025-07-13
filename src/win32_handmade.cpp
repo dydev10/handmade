@@ -171,7 +171,7 @@ internal void Win32FillSoundBuffer(Win32SoundOutput *soundOutput, DWORD byteToLo
   /*
     buffer with 2 channel : [left right] left right ..
     data                  : int16 int16  int16  int16
-    sample can sometimes mean both left and write values together(32 bit) or sometimes just a single channel(16 bit)  
+    sample can sometimes mean both left and right values together(32 bit) or sometimes just a single channel(16 bit)  
 
   */
   void *region1;
