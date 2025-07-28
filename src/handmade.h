@@ -5,6 +5,23 @@
  * shared macros
  */
 
+/**
+ * HANDMADE_INTERNAL:
+ *  0: running public build
+ *  1: running developer build
+ * 
+ * HANDMADE_SLOW:
+ *  0: running in optimized mode. no slow code paths, no debug/assert stuff
+ *  1: running in slow mode. debugs and assertion run
+ */
+
+// Assertion Macro
+#if HANDMADE_SLOW
+#define Assert(expr) if (!(expr)) {*(int *)0 = 0;}
+#else
+#define Assert(expr)
+#endif
+
 // Macro to get number of element in array
 #define ArrayCount(array) (sizeof(array) / sizeof((array)[0]))
 

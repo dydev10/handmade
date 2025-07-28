@@ -41,6 +41,8 @@ internal void RenderCheckeredGradient(GameOffScreenBuffer *buffer, int xOffset, 
 }
 
 internal void GameUpdateAndRender(GameMemory *gameMemory, GameInput *input, GameOffScreenBuffer *buffer, GameSoundOutputBuffer *soundBuffer) {
+  Assert(sizeof(GameState) < gameMemory->permanentStorageSize);
+
   GameState *gameState = (GameState *)gameMemory->permanentStorage;
   if (!gameMemory->isInitialized) {
     gameState->toneHz = 256;
