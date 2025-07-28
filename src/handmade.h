@@ -31,6 +31,8 @@
 #define MegaBytes(value) (KiloBytes(value) * 1024)
 // Macro to get GB in bytes
 #define GigaBytes(value) (MegaBytes(value) * 1024)
+// Macro to get TB in bytes
+#define TeraBytes(value) (GigaBytes(value) * 1024)
 
 /**
  * Services provided by platform layer to the game
