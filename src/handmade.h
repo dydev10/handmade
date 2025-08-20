@@ -26,13 +26,13 @@
 #define ArrayCount(array) (sizeof(array) / sizeof((array)[0]))
 
 // Macro to get KB in bytes
-#define KiloBytes(value) ((value) * 1024)
+#define KiloBytes(value) ((value) * 1024LL)
 // Macro to get MB in bytes
-#define MegaBytes(value) (KiloBytes(value) * 1024)
+#define MegaBytes(value) (KiloBytes(value) * 1024LL)
 // Macro to get GB in bytes
-#define GigaBytes(value) (MegaBytes(value) * 1024)
+#define GigaBytes(value) (MegaBytes(value) * 1024LL)
 // Macro to get TB in bytes
-#define TeraBytes(value) (GigaBytes(value) * 1024)
+#define TeraBytes(value) (GigaBytes(value) * 1024LL)
 
 /**
  * Services provided by platform layer to the game

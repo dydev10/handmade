@@ -412,14 +412,14 @@ int WINAPI WinMain(HINSTANCE instance, HINSTANCE prevInstance, PSTR cmdLine, int
       QueryPerformanceCounter(&lastCounter);
 
 #if HANDMADE_INTERNAL
-      LPVOID baseAddress = (LPVOID)TeraBytes((uint64)2);
+      LPVOID baseAddress = (LPVOID)TeraBytes(2);
 #else
       LPVOID baseAddress = 0;
 #endif
 
       GameMemory gameMemory = {};
       gameMemory.permanentStorageSize = MegaBytes(64);
-      gameMemory.transientStorageSize = GigaBytes((uint64)4);
+      gameMemory.transientStorageSize = GigaBytes(4);
       uint64 totalStorageSize = gameMemory.permanentStorageSize + gameMemory.transientStorageSize;
       gameMemory.permanentStorage = VirtualAlloc(baseAddress, totalStorageSize, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
       gameMemory.transientStorage = (uint8 *)gameMemory.permanentStorage + gameMemory.permanentStorageSize;
