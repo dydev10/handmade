@@ -45,6 +45,15 @@ internal void GameUpdateAndRender(GameMemory *gameMemory, GameInput *input, Game
 
   GameState *gameState = (GameState *)gameMemory->permanentStorage;
   if (!gameMemory->isInitialized) {
+    
+    /** DEBUG File I/O */
+    char *filename = __FILE__;
+    void *bitmapMemory = DEBUG_PlatformReadEntireFile(filename);
+    if (bitmapMemory) {
+      DEBUG_PlatformFreeFileMemory(bitmapMemory);
+    }
+
+    /** Debug Audio and render states */
     gameState->toneHz = 256;
     gameState->xOffset = 0;
     gameState->yOffset = 0;

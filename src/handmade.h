@@ -34,16 +34,34 @@
 // Macro to get TB in bytes
 #define TeraBytes(value) (GigaBytes(value) * 1024LL)
 
+
+// Helper inline function to safely convert 64 bit to 32 bit after asserting in dev
+inline uint32 SafeTruncateUInt64(uint64 value) {
+  // TODO: 0xFFFFFFFF is the max 32 value, use defines to refer to max values like these
+  Assert(value <= 0xFFFFFFFF);
+  uint32 result = (uint32)value;
+
+  return result;
+}
+
 /**
  * Services provided by platform layer to the game
  */
 
-// TODO: add platform services here
+#if HANDMADE_INTERNAL
+  internal void *DEBUG_PlatformReadEntireFile(char *filename);
+  internal void DEBUG_PlatformFreeFileMemory(void *bitmapMemory);
+  internal bool32 *DEBUG_PlatformWriteEntireFile(char *filename, uint32 memorySize, void *memory);
+#endif
+
+// TODO: add more platform services here
 
 
 /**
  * Services provided by game to the platform layer
  */
+
+// TODO: add game services here
 
 struct GameOffScreenBuffer {
   void *memory;  
