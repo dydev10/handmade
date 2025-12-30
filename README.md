@@ -8,3 +8,7 @@ Run the `misc\shell.bat` script before any other scripts to ensure proper shell 
 
 To compile the app, run `build.bat`.
 
+
+### Debugging
+
+Run `devenv build\win32_handmade.exe` to launch Visual Studio and use it's debugger.
