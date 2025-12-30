@@ -62,8 +62,8 @@ global_variable x_input_set_state *XInputSetState_ = XInputSetStateStub;
 typedef DIRECT_SOUND_CREATE(direct_sound_create);
 
 // Debug File I/O platform services
-internal void *DEBUG_PlatformReadEntireFile(char *filename) {
-  void *result = 0;
+internal DEBUG_ReadFileResult DEBUG_PlatformReadEntireFile(char *filename) {
+  DEBUG_ReadFileResult result = {};
 
   HANDLE fileHandle = CreateFileA(filename, GENERIC_READ, FILE_SHARE_READ, NULL, OPEN_EXISTING, NULL, NULL);
   if (fileHandle != INVALID_HANDLE_VALUE) {
@@ -72,14 +72,15 @@ internal void *DEBUG_PlatformReadEntireFile(char *filename) {
       uint32 fileSize32 = SafeTruncateUInt64(fileSize.QuadPart);
 
       // Allocation only for debugging, real I/O will use pre allocated game memory
-      result = VirtualAlloc(0, fileSize32, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
-      if (result) {
+      result.content = VirtualAlloc(0, fileSize32, MEM_RESERVE|MEM_COMMIT, PAGE_READWRITE);
+      if (result.content) {
         DWORD bytesRead;
-        if (ReadFile(fileHandle, result, fileSize32, &bytesRead, NULL) && (bytesRead == fileSize32)) {
-          // Log Success. Or not. its done
+        if (ReadFile(fileHandle, result.content, fileSize32, &bytesRead, NULL) && (bytesRead == fileSize32)) {
+          // Log Success. Or not. File Read Successful
+          result.contentSize = fileSize32;
         } else {
-          DEBUG_PlatformFreeFileMemory(result);
-          result = 0;
+          DEBUG_PlatformFreeFileMemory(result.content);
+          result.content = 0;
           // Log error
         }
       } else {
@@ -90,17 +91,38 @@ internal void *DEBUG_PlatformReadEntireFile(char *filename) {
     }
 
     CloseHandle(fileHandle);
+  } else {
+    // Log error
   }
 
   return result;
 }
 
-internal void DEBUG_PlatformFreeFileMemory(void *bitmapMemory) {
-  VirtualFree(bitmapMemory, 0, MEM_RELEASE);
+internal void DEBUG_PlatformFreeFileMemory(void *memory) {
+  if (memory) {
+    VirtualFree(memory, 0, MEM_RELEASE);
+  }
 }
 
-internal bool32 *DEBUG_PlatformWriteEntireFile(char *filename, uint32 memorySize, void *memory) {
+internal bool32 DEBUG_PlatformWriteEntireFile(char *filename, uint32 memorySize, void *memory) {
+  bool32 result = false;
 
+  HANDLE fileHandle = CreateFileA(filename, GENERIC_WRITE, 0, NULL, CREATE_ALWAYS, NULL, NULL);
+  if (fileHandle != INVALID_HANDLE_VALUE) {
+    DWORD bytesWritten;
+    if (WriteFile(fileHandle, memory, memorySize, &bytesWritten, NULL)) {
+      result = (bytesWritten == memorySize);
+      // Log Success. Or not. File write successful
+    } else {
+      // Log error
+    }
+
+    CloseHandle(fileHandle);
+  } else {
+    // Log error
+  }
+
+  return result;
 }
 
 

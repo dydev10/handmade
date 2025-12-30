@@ -49,9 +49,14 @@ inline uint32 SafeTruncateUInt64(uint64 value) {
  */
 
 #if HANDMADE_INTERNAL
-  internal void *DEBUG_PlatformReadEntireFile(char *filename);
-  internal void DEBUG_PlatformFreeFileMemory(void *bitmapMemory);
-  internal bool32 *DEBUG_PlatformWriteEntireFile(char *filename, uint32 memorySize, void *memory);
+// NOTE: These DEBUG file services are only for debugging. Dont use in release build because they are blocking and dont write safely. Could corrupt file 
+struct DEBUG_ReadFileResult {
+    uint32 contentSize;
+    void *content;
+  };
+  internal DEBUG_ReadFileResult DEBUG_PlatformReadEntireFile(char *filename);
+  internal void DEBUG_PlatformFreeFileMemory(void *memory);
+  internal bool32 DEBUG_PlatformWriteEntireFile(char *filename, uint32 memorySize, void *memory);
 #endif
 
 // TODO: add more platform services here

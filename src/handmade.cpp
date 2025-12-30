@@ -48,9 +48,10 @@ internal void GameUpdateAndRender(GameMemory *gameMemory, GameInput *input, Game
     
     /** DEBUG File I/O */
     char *filename = __FILE__;
-    void *bitmapMemory = DEBUG_PlatformReadEntireFile(filename);
-    if (bitmapMemory) {
-      DEBUG_PlatformFreeFileMemory(bitmapMemory);
+    DEBUG_ReadFileResult file = DEBUG_PlatformReadEntireFile(filename);
+    if (file.content) {
+      DEBUG_PlatformWriteEntireFile("test.out", file.contentSize, file.content);
+      DEBUG_PlatformFreeFileMemory(file.content);
     }
 
     /** Debug Audio and render states */
